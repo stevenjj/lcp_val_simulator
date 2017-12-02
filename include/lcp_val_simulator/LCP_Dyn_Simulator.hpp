@@ -24,6 +24,7 @@ public:
   sejong::Vector cori_;
   sejong::Vector grav_;
   sejong::Matrix A_;
+  sejong::Matrix Ainv_;
 
 
   LCP_Dyn_Simulator();
