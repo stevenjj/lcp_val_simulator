@@ -1,0 +1,8 @@
+#ifndef CTRL_CONFIG_H
+#define CTRL_CONFIG_H
+
+#define THIS_PACKAGE_PATH "@THIS_PACKAGE_PATH@"
+
+#define SERVO_RATE 1.0/1000.0
+
+#endif
