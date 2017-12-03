@@ -50,7 +50,13 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	robot_model_->getInverseMassInertia(Ainv_);
 
 	// Get Torque Command
-	m_tau[3] = 10.0;
+//	m_tau[3] = 10.0;
+
+	// Fix xyz in the air
+	m_tau[0] = 200. * (0.0 - m_q[0]) + 20.*(-m_qdot[0]);
+	m_tau[1] = 200. * (0.9 - m_q[1]) + 20.*(-m_qdot[1]);
+  	m_tau[2] = 200. * (0.2 - m_q[2]) + 20.*(-m_qdot[2]);
+
 
 	// Perform Time Integratation ---------------------------	
 	double dt = m_sim_rate;
@@ -87,22 +93,23 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	q_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) = qdot_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)*m_sim_rate + m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) ;
 
 
-	std::cout << "quat_pelvis " << quat_pelvis_current.w() << " " <<
+/*	std::cout << "quat_pelvis " << quat_pelvis_current.w() << " " <<
 								   quat_pelvis_current.x() << " " << 
 								   quat_pelvis_current.y() << " " <<
 								   quat_pelvis_current.z() << " " << std::endl;								    
 	std::cout << "m_qdot.head(NUM_VIRTUAL)" << m_qdot.head(NUM_VIRTUAL) << std::endl;
 
 
-/*	std::cout << "pelvis_omega" << pelvis_omega << std::endl;	 
-
-
-	std::cout << "m_q" << m_q << std::endl;
-	std::cout << "m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)" << m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) << std::endl;	 	*/
+	std::cout << "pelvis_omega" << pelvis_omega << std::endl;	 
+*/
 
 
 	m_qdot = qdot_next;
 	m_q = q_next;	
+
+/*	std::cout << "m_q" << m_q << std::endl;
+	std::cout << "m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)" << m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) << std::endl;	 	
+*/
 	std::cout << "[LCP Dyn Simulator] Step Update" << std::endl;
 
 

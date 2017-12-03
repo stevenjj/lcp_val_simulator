@@ -2,9 +2,11 @@
 #define VAL_RVIZ_TRANSLATOR_H
 
 #include "ros/ros.h"
+#include <sensor_msgs/JointState.h>
+
 #include <Utils/wrap_eigen.hpp>
 #include "valkyrie_definition.h"
-#include <sensor_msgs/JointState.h>
+
 
 class Val_Rviz_Translator{
 public:
@@ -39,7 +41,7 @@ public:
 												          {27, "rightForearmYaw"}
 												       };
 
-  void populate_joint_states_msg(const sejong::Vector & q,
+  void populate_joint_state_msg(const sejong::Vector & q,
                                  sensor_msgs::JointState & joint_state_msg);
 
   Val_Rviz_Translator();
