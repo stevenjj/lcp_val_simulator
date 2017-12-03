@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 2.8.3)
 project(lcp_val_simulator)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 roscpp
+sensor_msgs
+tf
 val_viz
 val_desc
 )
@@ -26,7 +28,9 @@ val_desc
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES lcp_val_simulator
-#  CATKIN_DEPENDS other_catkin_pkg
+   CATKIN_DEPENDS 
+       sensor_msgs
+       tf
 #  DEPENDS system_lib
 )
 
@@ -85,11 +89,15 @@ set(val_sim_model_sources src/valkyrie_dynamic_model/valkyrie_definition.h
 						  src/valkyrie_dynamic_model/Valkyrie_Kin_Model.hpp						  
 						  src/valkyrie_dynamic_model/Valkyrie_Kin_Model.cpp						  
 						  src/valkyrie_dynamic_model/RobotModel.hpp
-						  src/valkyrie_dynamic_model/RobotModel.cpp)						  
+						  src/valkyrie_dynamic_model/RobotModel.cpp)					
 
-add_executable(lcp_run_val_sim_node src/lcp_val_simulator_node_main.cpp 
-							 src/LCP_Dyn_Simulator.cpp 
-							 ${val_sim_model_sources})
+
+set(val_lcp_sim_sources src/lcp_val_simulator_node_main.cpp
+						src/lcp_dyn_simulator.cpp
+						src/val_rviz_translator.cpp)
+
+add_executable(lcp_run_val_sim_node  ${val_lcp_sim_sources}
+									 ${val_sim_model_sources})
 
 target_link_libraries(lcp_run_val_sim_node ${catkin_LIBRARIES} ${SJUtils}
 														${SJurdf}

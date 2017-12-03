@@ -1,3 +1,6 @@
+#ifndef LCP_DYN_SIM_H
+#define LCP_DYN_SIM_H
+
 #include "valkyrie_definition.h"
 #include "RobotModel.hpp"
 /*#include "Utils/utilities.hpp"
@@ -10,7 +13,6 @@ public:
   RobotModel* robot_model_;	
 
   void Initialize_Simulator();
-
 
   void UpdateModel();
   void MakeOneStepUpdate();
@@ -30,3 +32,5 @@ public:
   LCP_Dyn_Simulator();
   ~LCP_Dyn_Simulator();    
 };
+
+#endif
