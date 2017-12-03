@@ -13,9 +13,12 @@ public:
   RobotModel* robot_model_;	
 
   void Initialize_Simulator();
-
   void UpdateModel();
+
   void MakeOneStepUpdate();
+
+  void CreateFootContactModel();
+
 
   double m_sim_rate;
 

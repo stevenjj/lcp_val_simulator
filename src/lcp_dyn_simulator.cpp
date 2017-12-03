@@ -1,5 +1,5 @@
 #include <lcp_val_simulator/lcp_dyn_simulator.hpp>
-
+#include <Optimizer/SJMobyLCP/MobyLCP.h>
 
 LCP_Dyn_Simulator::LCP_Dyn_Simulator():m_q(NUM_Q), m_qdot(NUM_QDOT),
                                      m_tau(NUM_QDOT), cori_(NUM_QDOT),
@@ -44,6 +44,15 @@ void LCP_Dyn_Simulator::UpdateModel(){
 }
 
 
+void LCP_Dyn_Simulator::CreateFootContactModel(){
+
+/*    SJLinkID::LK_leftFootOutFront,
+    SJLinkID::LK_leftFootOutBack,
+    SJLinkID::LK_leftFootInBack,
+    SJLinkID::LK_leftFootInFront,*/
+
+}
+
 void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	// Update Model
 	UpdateModel();
@@ -53,21 +62,21 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 //	m_tau[3] = 10.0;
 
 	// Fix xyz in the air
-	m_tau[0] = 200. * (0.0 - m_q[0]) + 20.*(-m_qdot[0]);
-	m_tau[1] = 200. * (0.9 - m_q[1]) + 20.*(-m_qdot[1]);
-  	m_tau[2] = 200. * (0.2 - m_q[2]) + 20.*(-m_qdot[2]);
-
+/*	m_tau[0] = 200. * (0.0 - m_q[0]) + 20.*(-m_qdot[0]);
+	m_tau[1] = 200. * (0.0 - m_q[1]) + 20.*(-m_qdot[1]);
+  	m_tau[2] = 2000. * (1.131 - m_q[2]) + 20.*(-m_qdot[2]);
+*/
 
 	// Perform Time Integratation ---------------------------	
 	double dt = m_sim_rate;
 	sejong::Vector qddot_next = Ainv_*(m_tau - cori_ - grav_);
-	sejong::Vector qdot_next = qddot_next*m_sim_rate + m_qdot; 
+	sejong::Vector qdot_next = qddot_next*dt + m_qdot; 
 
 	// Perform Next State Integration
 	sejong::Vector q_next = m_q;
 
 	// Time Integrate Linear Virtual Joints
-	q_next.head(3) = qdot_next.head(3)*m_sim_rate + m_q.head(3);
+	q_next.head(3) = qdot_next.head(3)*dt + m_q.head(3);
 
 	// Time Integrate Virtual Sphere Joints
 		// Get the Pelvis angular velocity
@@ -78,7 +87,7 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 
 		sejong::Quaternion quat_pelvis_current(m_q[NUM_Q-1], m_q[3], m_q[4], m_q[5]); 	// w, x, y, z
 		sejong::Quaternion quat_world_rotate;
-		sejong::convert(pelvis_omega*m_sim_rate, quat_world_rotate);
+		sejong::convert(pelvis_omega*dt, quat_world_rotate);
 
 		// Perform Extrinsic Quaternion Multiplication
 		sejong::Quaternion quat_result = sejong::QuatMultiply(quat_world_rotate, quat_pelvis_current, true);  
@@ -90,18 +99,7 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 		q_next[NUM_Q-1] = quat_result.w();
 
 	// Time Integrate Non Virtual Joints
-	q_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) = qdot_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)*m_sim_rate + m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) ;
-
-
-/*	std::cout << "quat_pelvis " << quat_pelvis_current.w() << " " <<
-								   quat_pelvis_current.x() << " " << 
-								   quat_pelvis_current.y() << " " <<
-								   quat_pelvis_current.z() << " " << std::endl;								    
-	std::cout << "m_qdot.head(NUM_VIRTUAL)" << m_qdot.head(NUM_VIRTUAL) << std::endl;
-
-
-	std::cout << "pelvis_omega" << pelvis_omega << std::endl;	 
-*/
+	q_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) = qdot_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)*dt + m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) ;
 
 
 	m_qdot = qdot_next;

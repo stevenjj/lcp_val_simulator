@@ -3,6 +3,8 @@
 
 #include "ros/ros.h"
 #include <sensor_msgs/JointState.h>
+#include <tf/tf.h>
+#include <tf/transform_broadcaster.h>
 
 #include <Utils/wrap_eigen.hpp>
 #include "valkyrie_definition.h"
@@ -42,6 +44,7 @@ public:
 												       };
 
   void populate_joint_state_msg(const sejong::Vector & q,
+                                 tf::Transform & world_to_pelvis_transform,
                                  sensor_msgs::JointState & joint_state_msg);
 
   Val_Rviz_Translator();

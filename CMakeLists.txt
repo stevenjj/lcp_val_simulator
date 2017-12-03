@@ -46,6 +46,7 @@ set(Sejong_Eigen_Path ~/Sejong_Dynamic_Control_Toolkit/ExternalSource)
 find_library(SJUtils NAMES libSJutils.so PATHS ${Sejong_Library_Path}  REQUIRED)
 find_library(SJurdf NAMES libSJurdf.so PATHS ${Sejong_Library_Path}  REQUIRED)
 find_library(SJrbdl NAMES libSJrbdl.so PATHS ${Sejong_Library_Path}  REQUIRED)
+find_library(SJMobyLCP NAMES libSJMobyLCP.so PATHS ${Sejong_Library_Path}  REQUIRED)
 
 find_library(Valkyrie_model NAMES libValkyrie_model.so PATHS ${Sejong_Library_Path} REQUIRED)
 include_directories(${Sejong_Include_Path})
@@ -101,7 +102,8 @@ add_executable(lcp_run_val_sim_node  ${val_lcp_sim_sources}
 
 target_link_libraries(lcp_run_val_sim_node ${catkin_LIBRARIES} ${SJUtils}
 														${SJurdf}
-														${SJrbdl})
+														${SJrbdl}
+														${SJMobyLCP})
 
 
 

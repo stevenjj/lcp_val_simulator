@@ -16,6 +16,6 @@
 
     </group>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find lcp_val_simulator)/launch/rviz_configs/test_viz.rviz" required="true" /> 
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find lcp_val_simulator)/launch/rviz_configs/sim_viz.rviz" required="true" /> 
 
 </launch>
