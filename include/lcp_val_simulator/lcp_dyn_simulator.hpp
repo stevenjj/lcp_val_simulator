@@ -3,8 +3,9 @@
 
 #include "valkyrie_definition.h"
 #include "RobotModel.hpp"
-/*#include "Utils/utilities.hpp"
-#include <Valkyrie/Robot_Model/RobotModel.hpp>
+#include "Utils/utilities.hpp"
+
+/*#include <Valkyrie/Robot_Model/RobotModel.hpp>
 #include <Valkyrie/Robot_Model/Valkyrie_Left_Leg.hpp>
 #include <Valkyrie/Robot_Model/Valkyrie_Right_Leg.hpp>*/
 

@@ -20,8 +20,6 @@ void Val_Rviz_Translator::populate_joint_state_msg(const sejong::Vector & q,
 
     joint_states.name.push_back(joint_name);
     joint_states.position.push_back(joint_value);
-
-    std::cout << joint_name << " " << joint_value << std::endl;
   }
 
   tf::Transform transform;
