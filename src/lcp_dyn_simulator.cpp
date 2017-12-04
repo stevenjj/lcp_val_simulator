@@ -31,7 +31,7 @@ void LCP_Dyn_Simulator::Initialize_Simulator(){
 	  // y_pos
 	  m_q[1] = 0.0;
 	  // z_pos
-	  m_q[2] = 1.131; 
+	  m_q[2] = 1.2; //1.131; 
 
 	  m_q[NUM_Q - 1] = 1.0; 	  
 }
@@ -44,7 +44,9 @@ void LCP_Dyn_Simulator::UpdateModel(){
 }
 
 
-void LCP_Dyn_Simulator::CreateFootContactModel(){
+
+void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Matrix &B_mat,
+											   sejong::Vector &fn_out, sejong::Vector &fd_out){
   // lf - left foot, rf - right foot
   // OF - Out Front
   // OB - Out Back
@@ -85,10 +87,10 @@ void LCP_Dyn_Simulator::CreateFootContactModel(){
   J_lf_IF_c.block(0,0, 1, NUM_QDOT) = J_lf_IF.block(5, 0, 1, NUM_QDOT); // Z      
 
   //sejong::pretty_print(lf_OF_pos, std::cout, "Left Foot Out Front Position");
-  sejong::pretty_print(J_lf_OF_c, std::cout, "Jacobian lf_OF contact");  
+/*  sejong::pretty_print(J_lf_OF_c, std::cout, "Jacobian lf_OF contact");  
   sejong::pretty_print(J_lf_OB_c, std::cout, "Jacobian lf_OB contact");  
   sejong::pretty_print(J_lf_IB_c, std::cout, "Jacobian lf_IB contact");  
-  sejong::pretty_print(J_lf_IF_c, std::cout, "Jacobian lf_IF contact");      
+  sejong::pretty_print(J_lf_IF_c, std::cout, "Jacobian lf_IF contact");  */    
 
 
   // Contact Phi Jacobian
@@ -191,6 +193,31 @@ void LCP_Dyn_Simulator::CreateFootContactModel(){
   sejong::Vector fn_fd_lambda(p + p*d + p);
   fn_fd_lambda.setZero();
 
+  MobyLCPSolver l_mu;  
+  bool result_mu = l_mu.lcp_lemke_regularized(alpha_mu, beta_mu, &fn_fd_lambda);
+
+  sejong::Vector fn = fn_fd_lambda.block(0, 0, p, 1);
+  sejong::Vector fd = fn_fd_lambda.block(p, 0, p*d, 1);
+
+  N_mat = N;
+  B_mat = B;
+  fn_out = fn;
+  fd_out = fd;  
+
+//  bool result_mu = l_mu.lcp_fast(alpha_mu, beta_mu, &fn_fd_lambda);
+
+}
+
+double bound_torque(double torque_in){
+	double torque_max = 100.0;
+	if (torque_in >= torque_max){
+		return torque_max;
+	}else if (torque_in <= -torque_max){
+		return -torque_max;
+	}else{
+		return torque_in;
+	}
+
 }
 
 void LCP_Dyn_Simulator::MakeOneStepUpdate(){
@@ -198,10 +225,20 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	UpdateModel();
 	robot_model_->getInverseMassInertia(Ainv_);
 
-	CreateFootContactModel();
+	sejong::Matrix N_mat;
+	sejong::Matrix B_mat;
+	sejong::Vector fn_out;
+	sejong::Vector fd_out;
+	CreateFootContactModel(N_mat, B_mat, fn_out, fd_out);
+
+	sejong::pretty_print(fn_out, std::cout, "Normal Force");
 
 	// Get Torque Command
 //	m_tau[3] = 10.0;
+	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+		m_tau[i + NUM_VIRTUAL] = 75.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 2.0*(-m_qdot[i+NUM_VIRTUAL]);
+		m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
+	}
 
 	// Fix xyz in the air
 /*	m_tau[0] = 200. * (0.0 - m_q[0]) + 20.*(-m_qdot[0]);
@@ -211,7 +248,8 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 
 	// Perform Time Integratation ---------------------------	
 	double dt = m_sim_rate;
-	sejong::Vector qddot_next = Ainv_*(m_tau - cori_ - grav_);
+	sejong::Vector qddot_next = Ainv_*(m_tau - cori_ - grav_ + N_mat*fn_out + B_mat*fd_out);
+	//sejong::Vector qddot_next = Ainv_*(m_tau - cori_ - grav_);	
 	sejong::Vector qdot_next = qddot_next*dt + m_qdot; 
 
 	// Perform Next State Integration

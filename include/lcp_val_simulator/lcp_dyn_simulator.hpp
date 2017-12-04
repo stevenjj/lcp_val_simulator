@@ -18,7 +18,8 @@ public:
 
   void MakeOneStepUpdate();
 
-  void CreateFootContactModel();
+  void CreateFootContactModel(sejong::Matrix &N_mat, sejong::Matrix &B_mat,
+                              sejong::Vector &fn_out, sejong::Vector &fd_out);
 
 
   double m_sim_rate;
