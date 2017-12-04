@@ -14,13 +14,18 @@ public:
   RobotModel* robot_model_;	
 
   void Initialize_Simulator();
+  void setJointLimits();
   void UpdateModel();
 
   void MakeOneStepUpdate();
 
+  void BoundJointsToLimit(sejong::Vector &q_next);
+
   void CreateFootContactModel(sejong::Matrix &N_mat, sejong::Matrix &B_mat,
                               sejong::Vector &fn_out, sejong::Vector &fd_out);
 
+  std::map<int, double> SJ_joint_index_to_max_val;
+  std::map<int, double> SJ_joint_index_to_min_val;  
 
   double m_sim_rate;
 

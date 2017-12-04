@@ -16,6 +16,7 @@ LCP_Dyn_Simulator::LCP_Dyn_Simulator():m_q(NUM_Q), m_qdot(NUM_QDOT),
 
   m_sim_rate = 1/1000.0;
 
+  setJointLimits();
   Initialize_Simulator();
 
   printf("[Valkyrie Dynamic Control Test] Constructed\n");
@@ -24,6 +25,7 @@ LCP_Dyn_Simulator::LCP_Dyn_Simulator():m_q(NUM_Q), m_qdot(NUM_QDOT),
 LCP_Dyn_Simulator::~LCP_Dyn_Simulator(){}
 
 void LCP_Dyn_Simulator::Initialize_Simulator(){
+
   // Initialize to Valkyrie Standing Up
 	  // Set Virtual Joints
 	  // x_pos
@@ -31,7 +33,7 @@ void LCP_Dyn_Simulator::Initialize_Simulator(){
 	  // y_pos
 	  m_q[1] = 0.0;
 	  // z_pos
-	  m_q[2] = 1.2; //1.131; 
+	  m_q[2] = 1.18; //1.131; 
 
 	  m_q[NUM_Q - 1] = 1.0; 	  
 }
@@ -43,6 +45,70 @@ void LCP_Dyn_Simulator::UpdateModel(){
 	robot_model_->getCoriolis(cori_);	
 }
 
+
+void LCP_Dyn_Simulator::setJointLimits(){
+	SJ_joint_index_to_max_val = {
+          {0, 1.10},//"leftHipYaw"},
+          {1, 0.55}, //"leftHipRoll"},
+          {2, 1.62}, //"leftHipPitch"},
+          {3, 2.06}, //"leftKneePitch"} ,
+          {4, 0.65},//"leftAnklePitch"},
+          {5, 0.40}, //"leftAnkleRoll" },
+          {6, 0.41}, //"rightHipYaw"},
+          {7, 0.47}, //"rightHipRoll"},
+          {8, 1.62}, //"rightHipPitch"},
+          {9, 2.06},//"rightKneePitch"},
+          {10, 0.65},//"rightAnklePitch"},
+          {11, 0.4}, //"rightAnkleRoll"},                        
+          {12, 1.18},//"torsoYaw"},
+          {13, 0.67}, //"torsoPitch"},
+          {14, 0.26},//"torsoRoll"},
+          {15, 2.0},//"leftShoulderPitch"},
+          {16, 1.27},//"leftShoulderRoll"},
+          {17, 2.18},//"leftShoulderYaw"},
+          {18, 3.14},//"leftForearmYaw"},
+          {19, 0.12},//"leftElbowPitch"},
+          {20, 1.16},//"lowerNeckPitch"},
+          {21, 1.05},//"neckYaw"},
+          {22, 0.0},//"upperNeckPitch"},
+          {23, 2.0}, //"rightShoulderPitch"},
+          {24, 1.52},//"rightShoulderRoll"},
+          {25, 2.18},//"rightShoulderYaw"},
+          {26, 2.17},//"rightElbowPitch"},
+          {27, 3.14}//"rightForearmYaw"}
+       };	
+
+	SJ_joint_index_to_min_val = {
+          {0, -0.41},//"leftHipYaw"},
+          {1, -0.47},//"leftHipRoll"},
+          {2, -2.42},//"leftHipPitch"},
+          {3, -0.08},//"leftKneePitch"} ,
+          {4, -0.93},//"leftAnklePitch"},
+          {5, -0.40},//"leftAnkleRoll"},
+          {6, -1.10}, //"rightHipYaw"},
+          {7, -0.55}, //"rightHipRoll"},
+          {8, -2.42}, //"rightHipPitch"},
+          {9, -0.08}, //"rightKneePitch"},
+          {10, -0.93},//"rightAnklePitch"},
+          {11, -0.4}, //"rightAnkleRoll"},                        
+          {12, -1.33}, //"torsoYaw"},
+          {13, -0.13}, //"torsoPitch"},
+          {14, -0.23}, //"torsoRoll"},
+          {15, -2.85},//"leftShoulderPitch"},
+          {16, -1.52},//"leftShoulderRoll"},
+          {17, -3.10},//"leftShoulderYaw"},
+          {18, -2.02},//"leftForearmYaw"},
+          {19, -2.17},//"leftElbowPitch"},
+          {20, 0.0}, //"lowerNeckPitch"},
+          {21, -1.05},//"neckYaw"},
+          {22, -0.87},//"upperNeckPitch"},
+          {23, -2.85},//"rightShoulderPitch"},
+          {24, -1.27},//"rightShoulderRoll"},
+          {25, -3.10},//"rightShoulderYaw"},
+          {26, -0.12},//"rightElbowPitch"},
+          {27, -2.02}//"rightForearmYaw"}
+       };		
+}
 
 
 void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Matrix &B_mat,
@@ -296,7 +362,7 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
 }
 
 double bound_torque(double torque_in){
-	double torque_max = 100.0;
+	double torque_max = 500.0;
 	if (torque_in >= torque_max){
 		return torque_max;
 	}else if (torque_in <= -torque_max){
@@ -316,16 +382,19 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	sejong::Matrix B_mat;
 	sejong::Vector fn_out;
 	sejong::Vector fd_out;
-	CreateFootContactModel(N_mat, B_mat, fn_out, fd_out);
-
-	sejong::pretty_print(fn_out, std::cout, "Normal Force");
 
 	// Get Torque Command
 //	m_tau[3] = 10.0;
 	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
-		m_tau[i + NUM_VIRTUAL] = 100.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 10.0*(-m_qdot[i+NUM_VIRTUAL]);
+		m_tau[i + NUM_VIRTUAL] = 200.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 1.0*(-m_qdot[i+NUM_VIRTUAL]);
 		m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
 	}
+
+
+
+	CreateFootContactModel(N_mat, B_mat, fn_out, fd_out);
+	sejong::pretty_print(fn_out, std::cout, "Normal Force");
+
 
 	// Fix xyz in the air
 /*	m_tau[0] = 200. * (0.0 - m_q[0]) + 20.*(-m_qdot[0]);
@@ -368,16 +437,28 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	// Time Integrate Non Virtual Joints
 	q_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) = qdot_next.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)*dt + m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) ;
 
+	BoundJointsToLimit(q_next);
+
 
 	m_qdot = qdot_next;
 	m_q = q_next;	
 
-/*	std::cout << "m_q" << m_q << std::endl;
+//	std::cout << "m_q" << m_q << std::endl;
 	std::cout << "m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)" << m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) << std::endl;	 	
-*/
+
 	std::cout << "[LCP Dyn Simulator] Step Update" << std::endl;
 
+}
 
-
-
+void LCP_Dyn_Simulator::BoundJointsToLimit(sejong::Vector & q_next){
+	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+		if (q_next[i + NUM_VIRTUAL] >= SJ_joint_index_to_max_val[i]) {
+			q_next[i+ NUM_VIRTUAL] = SJ_joint_index_to_max_val[i];
+		}else if (q_next[i + NUM_VIRTUAL] <= SJ_joint_index_to_min_val[i]) {
+			q_next[i+ NUM_VIRTUAL] = SJ_joint_index_to_min_val[i];
+		}
+		else{		
+			// Keep value
+		}
+	}
 }
