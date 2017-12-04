@@ -108,8 +108,8 @@ void LCP_Dyn_Simulator::CreateFootContactModel(){
   // Begin Friction Contact Modeling
   const int p = 4; // Number of Contacts
   const int d = 4; // Number of Friction Basis Vectors per Friction Cone
-
   double mu_static = 0.8;//0.1; // Friction Coefficient
+
   sejong::Vector n1(3); n1[2] = 1.0; // Normal Vector for contact 1
   sejong::Vector n2 = n1; // Normal Vector for contact 2
   sejong::Vector n3 = n1; // Normal Vector for contact 3
@@ -138,6 +138,58 @@ void LCP_Dyn_Simulator::CreateFootContactModel(){
   sejong::Matrix D3 = D1; // Basis for contact 3
   sejong::Matrix D4 = D1; // Basis for contact 4    
 
+  // Set Projected Tangential Forces Direction
+  sejong::Matrix B(NUM_QDOT, p*d); 
+  B.block(0,0, NUM_QDOT, d) = J_c1.transpose()*D1;
+  B.block(0,d, NUM_QDOT, d) = J_c2.transpose()*D2;  
+  B.block(0,2*d, NUM_QDOT, d) = J_c3.transpose()*D3;
+  B.block(0,3*d, NUM_QDOT, d) = J_c4.transpose()*D4;    
+
+  // Unit e vecs and E binary matrix
+  sejong::Vector e(d); // same size as number of friction basis direction 
+  e.setOnes();
+  sejong::Matrix E(p*d, d); 
+  E.setZero();
+  E.block(0, 0, d, 1) = e; 
+  E.block(d, 1, d, 1) = e;
+  E.block(2*d, 2, d, 1) = e;  
+  E.block(3*d, 3, d, 1) = e;    
+
+  // mu Matrix
+  sejong::Matrix Mu = mu_static*sejong::Matrix::Identity(p, p);
+
+  // Prepare the LCP problem
+  double h = m_sim_rate; // timestep
+  sejong::Matrix A_inv = Ainv_;  
+
+  // Prepare Alpha Mu
+  // 1st Row
+  sejong::Matrix alpha_mu(p + p*d + p, p + p*d + p);
+  alpha_mu.setZero();
+  alpha_mu.block(0, 0, p, p) =  h*J_phi*A_inv*N;
+  alpha_mu.block(0, p, p, p*d) =  h*J_phi*A_inv*B;
+
+  // 2nd Row
+  alpha_mu.block(p, 0,     p*d, p) = h*B.transpose()*A_inv*N;
+  alpha_mu.block(p, p,     p*d, p*d) = h*B.transpose()*A_inv*B;
+  alpha_mu.block(p, p+p*d, p*d, p) = E;
+
+  // 3rd Row (Scaling for stabilization according to Tan, Jie. et al "Contact Handling for Articulated Rigid Bodies using LCP")
+  alpha_mu.block(p+p*d, 0, p, p) = Mu * h; // Scaling by h for stabilizing contact constraints
+  alpha_mu.block(p+p*d, p, p, p*d) = -E.transpose() * h;  // Scaling by h for stabilizing contact constraints
+
+  // Prepare Beta
+  sejong::Vector tau_star = A_*m_qdot + h*(m_tau - cori_ - grav_);
+  sejong::Vector beta_mu(p + p*d + p);
+  beta_mu.setZero();
+
+  // 1st Row
+  beta_mu.block(0,0, p, 1) = phi/h + J_phi*A_inv*tau_star;
+  // 2nd Row
+  beta_mu.block(p,0, p*d, 1) = B.transpose()*A_inv*tau_star;  
+
+  sejong::Vector fn_fd_lambda(p + p*d + p);
+  fn_fd_lambda.setZero();
 
 }
 
