@@ -11,7 +11,8 @@ LCP_Dyn_Simulator::LCP_Dyn_Simulator():m_q(NUM_Q), m_qdot(NUM_QDOT),
   grav_.setZero(); 
   A_.setZero();
   Ainv_.setZero();  
-  
+
+  interface_ = new interface();
   robot_model_ = RobotModel::GetRobotModel();
 
   m_sim_rate = 1/1000.0;
@@ -33,9 +34,33 @@ void LCP_Dyn_Simulator::Initialize_Simulator(){
 	  // y_pos
 	  m_q[1] = 0.0;
 	  // z_pos
-	  m_q[2] = 1.18; //1.131; 
+	  m_q[2] = 1.14; //1.135; //1.131; 
 
-	  m_q[NUM_Q - 1] = 1.0; 	  
+	  m_q[NUM_Q - 1] = 1.0; 	 
+
+
+
+  m_q[NUM_VIRTUAL + SJJointID::leftHipPitch] = -0.3; //r_joint_[r_joint_idx_map_.find("leftHipPitch"  )->second]->m_State.m_rValue[0] = -0.3;
+  m_q[NUM_VIRTUAL + SJJointID::rightHipPitch] = -0.3;  //r_joint_[r_joint_idx_map_.find("rightHipPitch" )->second]->m_State.m_rValue[0] = -0.3;
+  m_q[NUM_VIRTUAL + SJJointID::leftKneePitch] = 0.6;  //r_joint_[r_joint_idx_map_.find("leftKneePitch" )->second]->m_State.m_rValue[0] = 0.6;
+  m_q[NUM_VIRTUAL + SJJointID::rightKneePitch] = 0.6;//r_joint_[r_joint_idx_map_.find("rightKneePitch")->second]->m_State.m_rValue[0] = 0.6;
+  m_q[NUM_VIRTUAL + SJJointID::leftAnklePitch] = -0.3; //r_joint_[r_joint_idx_map_.find("leftAnklePitch")->second]->m_State.m_rValue[0] = -0.3;
+  m_q[NUM_VIRTUAL + SJJointID::rightAnklePitch] = -0.3; //r_joint_[r_joint_idx_map_.find("rightAnklePitch")->second]->m_State.m_rValue[0] = -0.3;
+
+  m_q[NUM_VIRTUAL + SJJointID::rightShoulderPitch] = 0.2; //r_joint_[r_joint_idx_map_.find("rightShoulderPitch")->second]->m_State.m_rValue[0] = 0.2;
+  m_q[NUM_VIRTUAL + SJJointID::rightShoulderRoll] = 1.1;  //r_joint_[r_joint_idx_map_.find("rightShoulderRoll" )->second]->m_State.m_rValue[0] = 1.1;
+  m_q[NUM_VIRTUAL + SJJointID::rightElbowPitch] = 0.4;  //r_joint_[r_joint_idx_map_.find("rightElbowPitch"   )->second]->m_State.m_rValue[0] = 0.4;
+  m_q[NUM_VIRTUAL + SJJointID::rightForearmYaw] = 1.5;  //r_joint_[r_joint_idx_map_.find("rightForearmYaw" )->second]->m_State.m_rValue[0] = 1.5;
+
+  m_q[NUM_VIRTUAL + SJJointID::leftShoulderPitch] = -0.2; //r_joint_[r_joint_idx_map_.find("rightShoulderPitch")->second]->m_State.m_rValue[0] = 0.2;
+  m_q[NUM_VIRTUAL + SJJointID::leftShoulderRoll] = -1.1;  //r_joint_[r_joint_idx_map_.find("rightShoulderRoll" )->second]->m_State.m_rValue[0] = 1.1;
+  m_q[NUM_VIRTUAL + SJJointID::leftElbowPitch] = -0.4;//0.4;  //r_joint_[r_joint_idx_map_.find("rightElbowPitch"   )->second]->m_State.m_rValue[0] = 0.4;
+  m_q[NUM_VIRTUAL + SJJointID::leftForearmYaw] = 1.5;  //r_joint_[r_joint_idx_map_.find("rightForearmYaw" )->second]->m_State.m_rValue[0] = 1.5;
+  //r_joint_[r_joint_idx_map_.find("leftShoulderPitch" )->second]->m_State.m_rValue[0] = -0.2;
+  //r_joint_[r_joint_idx_map_.find("leftShoulderRoll"  )->second]->m_State.m_rValue[0] = -1.1;
+  //r_joint_[r_joint_idx_map_.find("leftElbowPitch"    )->second]->m_State.m_rValue[0] = -0.4;
+  //r_joint_[r_joint_idx_map_.find("leftForearmYaw" )->second]->m_State.m_rValue[0] = 1.5;
+
 }
 
 void LCP_Dyn_Simulator::UpdateModel(){
@@ -318,8 +343,11 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   // 1st Row
   sejong::Matrix alpha_mu(p + p*d + p, p + p*d + p);
   alpha_mu.setZero();
-  alpha_mu.block(0, 0, p, p) =  h*J_phi*A_inv*N;
-  alpha_mu.block(0, p, p, p*d) =  h*J_phi*A_inv*B;
+/*  alpha_mu.block(0, 0, p, p) =  h*J_phi*A_inv*N;
+  alpha_mu.block(0, p, p, p*d) =  h*J_phi*A_inv*B;*/
+  alpha_mu.block(0, 0, p, p) =  h*N.transpose()*A_inv*N;
+  alpha_mu.block(0, p, p, p*d) =  h*N.transpose()*A_inv*B;
+
 
   // 2nd Row
   alpha_mu.block(p, 0,     p*d, p) = h*B.transpose()*A_inv*N;
@@ -338,7 +366,12 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   beta_mu.setZero();
 
   // 1st Row
-  beta_mu.block(0,0, p, 1) = phi/h + J_phi*A_inv*tau_star;
+  sejong::Vector phi_tol(p);
+  phi_tol.setOnes();
+  phi_tol *= 0.001;
+
+  beta_mu.block(0,0, p, 1) = N.transpose()*A_inv*tau_star;
+  //beta_mu.block(0,0, p, 1) = phi/h + J_phi*A_inv*tau_star - phi_tol;
   // 2nd Row
   beta_mu.block(p,0, p*d, 1) = B.transpose()*A_inv*tau_star;  
 
@@ -362,7 +395,7 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
 }
 
 double bound_torque(double torque_in){
-	double torque_max = 500.0;
+	double torque_max = 100.0;
 	if (torque_in >= torque_max){
 		return torque_max;
 	}else if (torque_in <= -torque_max){
@@ -373,7 +406,35 @@ double bound_torque(double torque_in){
 
 }
 
+void LCP_Dyn_Simulator::GetTorqueCommand(){
+	double sim_time = count*m_sim_rate;
+
+ 	std::vector<double> jpos(NUM_ACT_JOINT);
+  	std::vector<double> jvel(NUM_ACT_JOINT);
+  	std::vector<double> jtorque(NUM_ACT_JOINT); 
+	sejong::Vect3 body_pos;	body_pos[0] = m_q[0]; 	body_pos[1] = m_q[1]; 	body_pos[2] = m_q[2]; // x,y,z
+	sejong::Quaternion body_ori(m_q[NUM_Q-1], m_q[3], m_q[4], m_q[5]); 	// w, x, y, z
+ 	sejong::Vect3 body_vel; body_vel[0] = m_qdot[0]; body_vel[1] = m_qdot[1];  body_vel[2] = m_qdot[2]; 
+ 	sejong::Vect3 ang_vel;  ang_vel[0] = m_qdot[3]; ang_vel[1] = m_qdot[4]; ang_vel[2] = m_qdot[5];
+	std::vector<double> torque_command(NUM_ACT_JOINT);
+
+	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+		jpos[i] = m_q[i + NUM_VIRTUAL];
+		jvel[i] = m_qdot[i + NUM_VIRTUAL];
+		jtorque[i] = m_tau[i + NUM_VIRTUAL];			
+	}
+
+    interface_->GetCommand(sim_time, jpos, jvel, jtorque, body_pos, body_ori, body_vel, ang_vel, torque_command);
+
+	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+		m_tau[i + NUM_VIRTUAL] = torque_command[i];			
+	}
+
+}
+
 void LCP_Dyn_Simulator::MakeOneStepUpdate(){
+	double sim_time = count*m_sim_rate;
+
 	// Update Model
 	UpdateModel();
 	robot_model_->getInverseMassInertia(Ainv_);
@@ -384,12 +445,14 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	sejong::Vector fd_out;
 
 	// Get Torque Command
-//	m_tau[3] = 10.0;
-	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
-		m_tau[i + NUM_VIRTUAL] = 200.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 1.0*(-m_qdot[i+NUM_VIRTUAL]);
-		m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
-	}
 
+	if (count % 2 == 0){	
+		GetTorqueCommand();
+		for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+		//	m_tau[i + NUM_VIRTUAL] = 200.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 1.0*(-m_qdot[i+NUM_VIRTUAL]);
+			m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
+		}
+	}
 
 
 	CreateFootContactModel(N_mat, B_mat, fn_out, fd_out);
@@ -444,9 +507,11 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	m_q = q_next;	
 
 //	std::cout << "m_q" << m_q << std::endl;
-	std::cout << "m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)" << m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) << std::endl;	 	
+//	std::cout << "m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL)" << m_q.segment(NUM_VIRTUAL, NUM_QDOT-NUM_VIRTUAL) << std::endl;	 	
 
-	std::cout << "[LCP Dyn Simulator] Step Update" << std::endl;
+	count++;
+	std::cout << "[LCP Dyn Simulator] Step Update. Time:" << sim_time << " sim_rate" << m_sim_rate << std::endl;
+
 
 }
 
