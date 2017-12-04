@@ -11,24 +11,22 @@
 int main(int argc, char **argv){
   ros::init(argc, argv, "lcp_val_simulator_node");
   ros::NodeHandle n;
+  ros::Rate loop_rate(1000);
 
   // Transform broadcaster
   tf::TransformBroadcaster      br;
   // Simulation Joint State Publisher
   ros::Publisher sim_joint_state_pub = n.advertise<sensor_msgs::JointState>("val_lcp_robot/joint_states", 10);
 
+
+
   LCP_Dyn_Simulator lcp_simulator;
   Val_Rviz_Translator val_rviz_translator;  
 
-  ros::Rate loop_rate(1000);
-
   std::cout << "Simulator Running" << std::endl;
 
-  sensor_msgs::JointState updated_joint_msg;
-  
+  sensor_msgs::JointState updated_joint_msg; 
   tf::Transform           update_world_to_pelvis_transform;
-
-
   while (ros::ok()){
     lcp_simulator.MakeOneStepUpdate();
 
