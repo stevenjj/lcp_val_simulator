@@ -86,6 +86,39 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   J_lf_IB_c.block(0,0, 1, NUM_QDOT) = J_lf_IB.block(5, 0, 1, NUM_QDOT); // Z  
   J_lf_IF_c.block(0,0, 1, NUM_QDOT) = J_lf_IF.block(5, 0, 1, NUM_QDOT); // Z      
 
+  // Right Foot Contact
+  sejong::Vect3 rf_OF_pos;
+  sejong::Vect3 rf_OB_pos;
+  sejong::Vect3 rf_IB_pos;  
+  sejong::Vect3 rf_IF_pos;  
+
+  sejong::Matrix J_rf_OF(6,NUM_QDOT);
+  sejong::Matrix J_rf_OB(6,NUM_QDOT);
+  sejong::Matrix J_rf_IB(6,NUM_QDOT);
+  sejong::Matrix J_rf_IF(6,NUM_QDOT);
+
+  sejong::Matrix J_rf_OF_c(1,NUM_QDOT);  
+  sejong::Matrix J_rf_OB_c(1,NUM_QDOT);    
+  sejong::Matrix J_rf_IB_c(1,NUM_QDOT);
+  sejong::Matrix J_rf_IF_c(1,NUM_QDOT);
+
+  // Get the Positions of the Right Foot contacts
+  robot_model_->getPosition(m_q, SJLinkID::LK_rightFootOutFront, rf_OF_pos);
+  robot_model_->getPosition(m_q, SJLinkID::LK_rightFootOutBack, rf_OB_pos);
+  robot_model_->getPosition(m_q, SJLinkID::LK_rightFootInBack, rf_IB_pos);
+  robot_model_->getPosition(m_q, SJLinkID::LK_rightFootInFront, rf_IF_pos);
+
+  // Get the Jacobian of the Z direction
+  robot_model_->getFullJacobian(m_q, SJLinkID::LK_rightFootOutFront, J_rf_OF);
+  robot_model_->getFullJacobian(m_q, SJLinkID::LK_rightFootOutBack, J_rf_OB);
+  robot_model_->getFullJacobian(m_q, SJLinkID::LK_rightFootInBack, J_rf_IB);  
+  robot_model_->getFullJacobian(m_q, SJLinkID::LK_rightFootInFront, J_rf_IF);  
+
+  J_rf_OF_c.block(0,0, 1, NUM_QDOT) = J_rf_OF.block(5, 0, 1, NUM_QDOT); // Z
+  J_rf_OB_c.block(0,0, 1, NUM_QDOT) = J_rf_OB.block(5, 0, 1, NUM_QDOT); // Z  
+  J_rf_IB_c.block(0,0, 1, NUM_QDOT) = J_rf_IB.block(5, 0, 1, NUM_QDOT); // Z  
+  J_rf_IF_c.block(0,0, 1, NUM_QDOT) = J_rf_IF.block(5, 0, 1, NUM_QDOT); // Z      
+
   //sejong::pretty_print(lf_OF_pos, std::cout, "Left Foot Out Front Position");
 /*  sejong::pretty_print(J_lf_OF_c, std::cout, "Jacobian lf_OF contact");  
   sejong::pretty_print(J_lf_OB_c, std::cout, "Jacobian lf_OB contact");  
@@ -93,41 +126,73 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   sejong::pretty_print(J_lf_IF_c, std::cout, "Jacobian lf_IF contact");  */    
 
 
-  // Contact Phi Jacobian
-  sejong::Matrix J_phi(4,NUM_QDOT);  
-  sejong::Vector phi(4); 
+  // Begin Friction Contact Modeling
+  const int p = 8; // Number of Contacts
+  const int d = 4; // Number of Friction Basis Vectors per Friction Cone
+  double mu_static = 0.8;//0.1; // Friction Coefficient
 
+
+  // Contact Phi Jacobian
+  sejong::Matrix J_phi(p,NUM_QDOT);  
+  sejong::Vector phi(p); 
+
+  // Left Foot
   J_phi.block(0,0, 1, NUM_QDOT) = J_lf_OF_c; // Jacobian of distance to contact point 1
   J_phi.block(1,0, 1, NUM_QDOT) = J_lf_OB_c; // Jacobian of distance to contact point 2
   J_phi.block(2,0, 1, NUM_QDOT) = J_lf_IB_c; // Jacobian of distance to contact point 3
   J_phi.block(3,0, 1, NUM_QDOT) = J_lf_IF_c; // Jacobian of distance to contact point 4
 
+  // Right Foot
+  J_phi.block(4,0, 1, NUM_QDOT) = J_rf_OF_c; // Jacobian of distance to contact point 5  
+  J_phi.block(5,0, 1, NUM_QDOT) = J_rf_OB_c; // Jacobian of distance to contact point 6  
+  J_phi.block(6,0, 1, NUM_QDOT) = J_rf_IB_c; // Jacobian of distance to contact point 7  
+  J_phi.block(7,0, 1, NUM_QDOT) = J_rf_IF_c; // Jacobian of distance to contact point 8  
+
+  // Left Foot
   phi[0] = lf_OF_pos[2]; // Distance to contact point 1
   phi[1] = lf_OB_pos[2]; // Distance to contact point 2
   phi[2] = lf_IB_pos[2]; // Distance to contact point 3
   phi[3] = lf_IB_pos[2]; // Distance to contact point 4  
 
-  // Begin Friction Contact Modeling
-  const int p = 4; // Number of Contacts
-  const int d = 4; // Number of Friction Basis Vectors per Friction Cone
-  double mu_static = 0.8;//0.1; // Friction Coefficient
+  // Right Foot
+  phi[4] = rf_OF_pos[2]; // Distance to contact point 5
+  phi[5] = rf_OB_pos[2]; // Distance to contact point 6
+  phi[6] = rf_IB_pos[2]; // Distance to contact point 7
+  phi[7] = rf_IB_pos[2]; // Distance to contact point 8    
 
+  // Left Foot
   sejong::Vector n1(3); n1[2] = 1.0; // Normal Vector for contact 1
   sejong::Vector n2 = n1; // Normal Vector for contact 2
   sejong::Vector n3 = n1; // Normal Vector for contact 3
   sejong::Vector n4 = n1; // Normal Vector for contact 4 
 
+  // Right Foot
+  sejong::Vector n5 = n1; // Normal Vector for contact 5
+  sejong::Vector n6 = n1; // Normal Vector for contact 6
+  sejong::Vector n7 = n1; // Normal Vector for contact 7 
+  sejong::Vector n8 = n1; // Normal Vector for contact 8   
+
   sejong::Matrix J_c1 = J_lf_OF.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 1
   sejong::Matrix J_c2 = J_lf_OB.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 2  
-  sejong::Matrix J_c3 = J_lf_IB.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 1
-  sejong::Matrix J_c4 = J_lf_IF.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 2    
+  sejong::Matrix J_c3 = J_lf_IB.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 3
+  sejong::Matrix J_c4 = J_lf_IF.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 4    
+
+  sejong::Matrix J_c5 = J_rf_OF.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 5
+  sejong::Matrix J_c6 = J_rf_OB.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 6  
+  sejong::Matrix J_c7 = J_rf_IB.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 7
+  sejong::Matrix J_c8 = J_rf_IF.block(3, 0, 3, NUM_QDOT); // Jacobian (x,y,z) at contact point 8    
 
   // Set Projected Normal Forces Direction
   sejong::Matrix N(NUM_QDOT, p);
   N.block(0,0, NUM_QDOT, 1) = J_c1.transpose()*n1;
   N.block(0,1, NUM_QDOT, 1) = J_c2.transpose()*n2; 
   N.block(0,2, NUM_QDOT, 1) = J_c3.transpose()*n3;
-  N.block(0,3, NUM_QDOT, 1) = J_c4.transpose()*n4;  
+  N.block(0,3, NUM_QDOT, 1) = J_c4.transpose()*n4;
+
+  N.block(0,4, NUM_QDOT, 1) = J_c5.transpose()*n5;
+  N.block(0,5, NUM_QDOT, 1) = J_c6.transpose()*n6; 
+  N.block(0,6, NUM_QDOT, 1) = J_c7.transpose()*n7;
+  N.block(0,7, NUM_QDOT, 1) = J_c8.transpose()*n8;    
 
   // Set Basis Vectors of Friction Cone 
   sejong::Matrix D1(3, d); // Basis for contact 1 
@@ -140,6 +205,12 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   sejong::Matrix D3 = D1; // Basis for contact 3
   sejong::Matrix D4 = D1; // Basis for contact 4    
 
+  sejong::Matrix D5 = D1; // Basis for contact 5
+  sejong::Matrix D6 = D1; // Basis for contact 6
+  sejong::Matrix D7 = D1; // Basis for contact 7    
+  sejong::Matrix D8 = D1; // Basis for contact 8    
+
+
   // Set Projected Tangential Forces Direction
   sejong::Matrix B(NUM_QDOT, p*d); 
   B.block(0,0, NUM_QDOT, d) = J_c1.transpose()*D1;
@@ -147,22 +218,35 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   B.block(0,2*d, NUM_QDOT, d) = J_c3.transpose()*D3;
   B.block(0,3*d, NUM_QDOT, d) = J_c4.transpose()*D4;    
 
+  B.block(0,4*d, NUM_QDOT, d) = J_c5.transpose()*D5;
+  B.block(0,5*d, NUM_QDOT, d) = J_c6.transpose()*D6;  
+  B.block(0,6*d, NUM_QDOT, d) = J_c7.transpose()*D7;
+  B.block(0,7*d, NUM_QDOT, d) = J_c8.transpose()*D8;    
+
   // Unit e vecs and E binary matrix
   sejong::Vector e(d); // same size as number of friction basis direction 
   e.setOnes();
-  sejong::Matrix E(p*d, d); 
+  // Diagonal e for each contact point
+  sejong::Matrix E(p*d, p); 
   E.setZero();
   E.block(0, 0, d, 1) = e; 
   E.block(d, 1, d, 1) = e;
   E.block(2*d, 2, d, 1) = e;  
   E.block(3*d, 3, d, 1) = e;    
 
+  E.block(4*d, 4, d, 1) = e;  
+  E.block(5*d, 5, d, 1) = e;    
+  E.block(6*d, 6, d, 1) = e;  
+  E.block(7*d, 7, d, 1) = e;    
+
+ 
   // mu Matrix
   sejong::Matrix Mu = mu_static*sejong::Matrix::Identity(p, p);
 
   // Prepare the LCP problem
   double h = m_sim_rate; // timestep
   sejong::Matrix A_inv = Ainv_;  
+
 
   // Prepare Alpha Mu
   // 1st Row
@@ -180,6 +264,8 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   alpha_mu.block(p+p*d, 0, p, p) = Mu * h; // Scaling by h for stabilizing contact constraints
   alpha_mu.block(p+p*d, p, p, p*d) = -E.transpose() * h;  // Scaling by h for stabilizing contact constraints
 
+  
+
   // Prepare Beta
   sejong::Vector tau_star = A_*m_qdot + h*(m_tau - cori_ - grav_);
   sejong::Vector beta_mu(p + p*d + p);
@@ -190,6 +276,7 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   // 2nd Row
   beta_mu.block(p,0, p*d, 1) = B.transpose()*A_inv*tau_star;  
 
+  
   sejong::Vector fn_fd_lambda(p + p*d + p);
   fn_fd_lambda.setZero();
 
@@ -236,7 +323,7 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 	// Get Torque Command
 //	m_tau[3] = 10.0;
 	for (size_t i = 0; i < NUM_ACT_JOINT; i++){
-		m_tau[i + NUM_VIRTUAL] = 75.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 2.0*(-m_qdot[i+NUM_VIRTUAL]);
+		m_tau[i + NUM_VIRTUAL] = 100.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 10.0*(-m_qdot[i+NUM_VIRTUAL]);
 		m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
 	}
 
