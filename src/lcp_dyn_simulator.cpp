@@ -1,6 +1,11 @@
 #include <lcp_val_simulator/lcp_dyn_simulator.hpp>
 #include <Optimizer/SJMobyLCP/MobyLCP.h>
 
+#define FIX_CONTACT
+
+#define USE_WBDC
+//#define USE_JPOS
+
 LCP_Dyn_Simulator::LCP_Dyn_Simulator():m_q(NUM_Q), m_qdot(NUM_QDOT),
                                      m_tau(NUM_QDOT), cori_(NUM_QDOT),
                                      grav_(NUM_QDOT), A_(NUM_QDOT, NUM_QDOT), Ainv_(NUM_QDOT, NUM_QDOT){
@@ -343,11 +348,13 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   // 1st Row
   sejong::Matrix alpha_mu(p + p*d + p, p + p*d + p);
   alpha_mu.setZero();
-/*  alpha_mu.block(0, 0, p, p) =  h*J_phi*A_inv*N;
-  alpha_mu.block(0, p, p, p*d) =  h*J_phi*A_inv*B;*/
-  alpha_mu.block(0, 0, p, p) =  h*N.transpose()*A_inv*N;
-  alpha_mu.block(0, p, p, p*d) =  h*N.transpose()*A_inv*B;
-
+  #ifdef FIX_CONTACT
+    alpha_mu.block(0, 0, p, p) =  h*N.transpose()*A_inv*N;
+    alpha_mu.block(0, p, p, p*d) =  h*N.transpose()*A_inv*B;
+  #else
+    alpha_mu.block(0, 0, p, p) =  h*J_phi*A_inv*N;
+    alpha_mu.block(0, p, p, p*d) =  h*J_phi*A_inv*B;
+  #endif
 
   // 2nd Row
   alpha_mu.block(p, 0,     p*d, p) = h*B.transpose()*A_inv*N;
@@ -370,8 +377,12 @@ void LCP_Dyn_Simulator::CreateFootContactModel(sejong::Matrix &N_mat, sejong::Ma
   phi_tol.setOnes();
   phi_tol *= 0.001;
 
-  beta_mu.block(0,0, p, 1) = N.transpose()*A_inv*tau_star;
-  //beta_mu.block(0,0, p, 1) = phi/h + J_phi*A_inv*tau_star - phi_tol;
+  #ifdef FIX_CONTACT
+    beta_mu.block(0,0, p, 1) = N.transpose()*A_inv*tau_star;
+  #else
+    beta_mu.block(0,0, p, 1) = phi/h + J_phi*A_inv*tau_star - phi_tol;
+  #endif
+
   // 2nd Row
   beta_mu.block(p,0, p*d, 1) = B.transpose()*A_inv*tau_star;  
 
@@ -446,13 +457,17 @@ void LCP_Dyn_Simulator::MakeOneStepUpdate(){
 
 	// Get Torque Command
 
-	if (count % 2 == 0){	
-		GetTorqueCommand();
-		for (size_t i = 0; i < NUM_ACT_JOINT; i++){
-		//	m_tau[i + NUM_VIRTUAL] = 200.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 1.0*(-m_qdot[i+NUM_VIRTUAL]);
-			m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
-		}
-	}
+  	if (count % 2 == 0){	
+      #ifdef USE_WBDC
+  	 	  GetTorqueCommand();
+      #endif
+  		for (size_t i = 0; i < NUM_ACT_JOINT; i++){
+        #ifdef USE_JPOS
+          //m_tau[i + NUM_VIRTUAL] = 200.0*(0.0 - m_q[i + NUM_VIRTUAL]) + 1.0*(-m_qdot[i+NUM_VIRTUAL]);
+        #endif
+     		m_tau[i + NUM_VIRTUAL] = bound_torque(m_tau[i + NUM_VIRTUAL]);
+  		}
+  	}
 
 
 	CreateFootContactModel(N_mat, B_mat, fn_out, fd_out);
