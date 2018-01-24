@@ -55,7 +55,7 @@ include_directories(${Sejong_Eigen_Path})
 
 include_directories(
 # include
-# ${catkin_INCLUDE_DIRS}
+${catkin_INCLUDE_DIRS}
 )
 
 ## Add cmake target dependencies of the library
